@@ -113,9 +113,15 @@ st.subheader(saved_file_text)
 saved_file = st.file_uploader("", type=["csv"], key="saved_file")
 
 # ---------------- CSV Preview ----------------
-def preview_file(file):
+def preview_file(file, required_columns):
     try:
         df = pd.read_csv(file)
+        # Remove whitespace and lowercase headers
+        df.columns = df.columns.str.strip().str.lower()
+        missing_cols = [col.lower() for col in required_columns if col.lower() not in df.columns]
+        if missing_cols:
+            st.error(f"CSV is missing required columns: {missing_cols}")
+            return None
         st.write(preview_text)
         st.dataframe(df.head(), use_container_width=True)
         return df
@@ -123,17 +129,20 @@ def preview_file(file):
         st.error(f"Error reading CSV: {e}")
         return None
 
-df_programs = preview_file(program_file) if program_file else None
-df_kids = preview_file(kids_file) if kids_file else None
+df_programs = preview_file(program_file, ["ProgramName","Capacity","Day","TimeSlot"]) if program_file else None
+df_kids = preview_file(kids_file, ["KidName","Preference1","Preference2","Preference3"]) if kids_file else None
 
 # ---------------- Assignment Function ----------------
 def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
     assigned_programs = {kid: [] for kid in kids_prefs}
     program_slots = {}
     for _, row in programs_df.iterrows():
-        key = (row['ProgramName'], row['Day'], int(row['TimeSlot']))
-        program_slots[key] = row['Capacity']
-
+        try:
+            key = (row['programname'], row['day'], int(row['timeslot']))
+            program_slots[key] = row['capacity']
+        except KeyError as e:
+            st.error(f"Missing column in programs CSV: {e}")
+            return {}
     max_rank = max(len(prefs) for prefs in kids_prefs.values())
     for rank in range(max_rank):
         applicants_per_program = {}
@@ -149,7 +158,6 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
                 if available_slots:
                     chosen_slot = random.choice(available_slots)
                     applicants_per_program.setdefault(chosen_slot, []).append(kid)
-
         for slot_key, applicants in applicants_per_program.items():
             available = program_slots[slot_key]
             unassigned_applicants = [kid for kid in applicants if len(assigned_programs[kid]) < max_per_kid]
@@ -162,9 +170,8 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
                 for kid in selected:
                     assigned_programs[kid].append(f"{slot_key[0]} ({slot_key[1]} slot {slot_key[2]})")
                     program_slots[slot_key] -= 1
-
     return assigned_programs
-    # ---------------- Main Logic ----------------
+# ---------------- Main Logic ----------------
 if saved_file:
     try:
         df_assignments = pd.read_csv(saved_file)
@@ -188,7 +195,7 @@ elif df_programs is not None and df_kids is not None:
                 day = p.split("(")[1].split(" ")[0]
                 slot = int(p.split("slot ")[1].replace(")",""))
                 prefs = kids_preferences[kid]
-                rank = prefs.index(prog_name)+1 if prog_name in prefs else 3
+                rank = prefs.index(prog_name)+1 if prog_name in prefs else len(prefs)+1
                 table_rows.append({
                     'Kid': kid,
                     'Program': prog_name,
@@ -207,16 +214,16 @@ elif df_programs is not None and df_kids is not None:
     filter_program = st.sidebar.multiselect("Filter by Program", options=display_df['Program'].unique(), default=display_df['Program'].unique())
     filtered_df = display_df[(display_df['Day'].isin(filter_day)) & (display_df['Program'].isin(filter_program))]
 
-    # ---------------- Display ----------------
+    # ---------------- Display Assignments ----------------
     st.subheader(assignments_text)
     st.dataframe(filtered_df[['Kid','Program','Details']], use_container_width=True)
 
-    # ---------------- Summary ----------------
+    # ---------------- Summary Statistics ----------------
     st.subheader(summary_text)
     program_fill = filtered_df.groupby('Program').size().reset_index(name='AssignedCount')
-    program_fill = program_fill.merge(df_programs[['ProgramName','Capacity']], left_on='Program', right_on='ProgramName', how='left')
-    program_fill['FillRate'] = program_fill['AssignedCount'] / program_fill['Capacity']
-    st.dataframe(program_fill[['Program','AssignedCount','Capacity','FillRate']], use_container_width=True)
+    program_fill = program_fill.merge(df_programs[['programname','capacity']], left_on='Program', right_on='programname', how='left')
+    program_fill['FillRate'] = program_fill['AssignedCount'] / program_fill['capacity']
+    st.dataframe(program_fill[['Program','AssignedCount','capacity','FillRate']], use_container_width=True)
 
     # ---------------- Download CSV ----------------
     st.subheader(download_text)
