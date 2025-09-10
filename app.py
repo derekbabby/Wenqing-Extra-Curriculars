@@ -140,7 +140,12 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
     for _, row in programs_df.iterrows():
         key = (row['programname'], row['day'], int(row['timeslot']))
         program_slots[key] = row['capacity']
-
+        
+# ---------------- Filter out invalid preferences ----------------
+    valid_program_names = set(programs_df['programname'])
+    for kid, prefs in kids_prefs.items():
+        kids_prefs[kid] = [p for p in prefs if p in valid_program_names]
+        
     max_rank = max(len(prefs) for prefs in kids_prefs.values())
 
     # Continue looping until no one can be assigned more or programs are full
