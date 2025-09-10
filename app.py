@@ -165,21 +165,17 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
 
                 # Determine which slots this student can take without conflict
                 # Track occupied day and slot pairs
-occupied_slots = [
-    (a.split("(")[1].split(" ")[0], int(a.split("slot ")[1].replace(")","")))
-    for a in assigned_programs[kid]
-]
+                occupied_slots = [
+                    (a.split("(")[1].split(" ")[0], int(a.split("slot ")[1].replace(")","")))
+                    for a in assigned_programs[kid]
+                ]
 
-# Check for programs in the student's preferences that are actually available
-available_slots = [
-    k for k in program_slots
-    if k[0] == prefs[rank] and program_slots[k] > 0 and (k[1], k[2]) not in occupied_slots
-]
-# Check for programs in the student's preferences that are actually available
-available_slots = [
-    k for k in program_slots
-    if k[0] == prefs[rank] and program_slots[k] > 0 and (k[1], k[2]) not in occupied_slots
-]
+                # Check for programs in the student's preferences that are actually available
+                available_slots = [
+                    k for k in program_slots
+                    if k[0] == prefs[rank] and program_slots[k] > 0 and (k[1], k[2]) not in occupied_slots
+                ]
+
                 if available_slots:
                     assignments_remaining = True
                     chosen_slot = random.choice(available_slots)
