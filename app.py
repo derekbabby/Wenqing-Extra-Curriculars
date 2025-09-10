@@ -127,7 +127,7 @@ df_programs = preview_file(program_file) if program_file else None
 df_kids = preview_file(kids_file) if kids_file else None
 
 # ---------------- Assignment Function ----------------
-def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
+def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1, auto_fill=True):
     assigned_programs = {kid: [] for kid in kids_prefs}
     program_slots = {}
     for _, row in programs_df.iterrows():
@@ -162,20 +162,22 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
                 for kid in selected:
                     assigned_programs[kid].append(f"{slot_key[0]} ({slot_key[1]} slot {slot_key[2]})")
                     program_slots[slot_key] -= 1
+
+    # --- Auto-fill remaining slots if enabled ---
     if auto_fill:
-    # Fill remaining slots randomly for students who have not reached max programs
-    for key, remaining in program_slots.items():
-        if remaining > 0:
-            eligible_kids = [
-                kid for kid in assigned_programs
-                if len(assigned_programs[kid]) < max_per_kid
-                and str(key[2]) not in [a.split("slot ")[-1].replace(")","") for a in assigned_programs[kid]]
-            ]
-            if eligible_kids:
-                chosen = random.sample(eligible_kids, min(remaining, len(eligible_kids)))
-                for kid in chosen:
-                    assigned_programs[kid].append(f"{key[0]} ({key[1]} slot {key[2]})")
-                    program_slots[key] -= 1
+        for key, remaining in program_slots.items():
+            if remaining > 0:
+                eligible_kids = [
+                    kid for kid in assigned_programs
+                    if len(assigned_programs[kid]) < max_per_kid
+                    and str(key[2]) not in [a.split("slot ")[-1].replace(")","") for a in assigned_programs[kid]]
+                ]
+                if eligible_kids:
+                    chosen = random.sample(eligible_kids, min(remaining, len(eligible_kids)))
+                    for kid in chosen:
+                        assigned_programs[kid].append(f"{key[0]} ({key[1]} slot {key[2]})")
+                        program_slots[key] -= 1
+
     return assigned_programs
 
 # ---------------- Generate Button ----------------
