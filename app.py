@@ -175,6 +175,11 @@ available_slots = [
     k for k in program_slots
     if k[0] == prefs[rank] and program_slots[k] > 0 and (k[1], k[2]) not in occupied_slots
 ]
+# Check for programs in the student's preferences that are actually available
+available_slots = [
+    k for k in program_slots
+    if k[0] == prefs[rank] and program_slots[k] > 0 and (k[1], k[2]) not in occupied_slots
+]
                 if available_slots:
                     assignments_remaining = True
                     chosen_slot = random.choice(available_slots)
