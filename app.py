@@ -2,10 +2,11 @@ import streamlit as st
 import pandas as pd
 import random
 from PIL import Image
+import plotly.express as px
 
 # ---------------- Logo ----------------
-logo = Image.open("logo.png")  # Place your logo.png in same folder
-st.image(logo, use_column_width=False, width=250)
+logo = Image.open("logo.png")  # Place logo.png in same folder
+st.image(logo, width=250)  # fixed width; removes deprecated warning
 
 # ---------------- Language Toggle ----------------
 language = st.sidebar.radio("Language / 語言", ("English", "繁體中文"))
@@ -24,6 +25,9 @@ if language == "English":
     saved_file_text = "Load Previous Assignments (optional)"
     download_button_label = "Download CSV"
     preview_text = "Preview of Uploaded File"
+    filters_text = "Filters"
+    summary_text = "Summary Statistics"
+    compact_sidebar_text = "Compact Mode (hide sidebar)"
 else:
     title = "課外活動分配系統"
     subtitle = "根據偏好、名額與時段分配孩子到活動"
@@ -37,11 +41,19 @@ else:
     saved_file_text = "載入先前分配結果 (可選)"
     download_button_label = "下載 CSV"
     preview_text = "上傳檔案預覽"
+    filters_text = "篩選條件"
+    summary_text = "統計摘要"
+    compact_sidebar_text = "簡潔模式 (隱藏側邊欄)"
 
 # ---------------- Page Title ----------------
 st.markdown(f"<h1 style='text-align: center; color: #2E86C1;'>{title}</h1>", unsafe_allow_html=True)
 st.markdown(f"<h5 style='text-align: center; color: #555;'>{subtitle}</h5>", unsafe_allow_html=True)
 st.markdown("---")
+
+# ---------------- Compact Mode Toggle ----------------
+compact_mode = st.sidebar.checkbox(compact_sidebar_text, value=False)
+if compact_mode:
+    st.markdown("<style>section[data-testid='stSidebar']{display:none;}</style>", unsafe_allow_html=True)
 
 # ---------------- Collapsible Instructions ----------------
 with st.expander("How the Program Works / 如何運作", expanded=True):
@@ -59,8 +71,9 @@ This app assigns kids to extracurricular programs based on their preferences, pr
 
 ### How Results Are Displayed
 - Assignments are **shown on-screen** with color coding.
+- Tap a program to see day, slot, and preference rank (works on mobile).
 - The table is **searchable and sortable**.
-- Users can **download results as CSV** to save progress.
+- Users can **download results as CSV**.
 
 ### Workflow
 1. Upload Programs CSV.
@@ -68,7 +81,8 @@ This app assigns kids to extracurricular programs based on their preferences, pr
 3. Review uploaded files (preview shown).
 4. Generate assignments.
 5. Review assignments in color-coded table.
-6. Download CSV for records.
+6. View summary statistics.
+7. Download CSV for records.
         """)
     else:
         st.markdown("""
@@ -84,6 +98,7 @@ This app assigns kids to extracurricular programs based on their preferences, pr
 
 ### 結果顯示方式
 - 分配結果會**顯示在螢幕上**，每個活動用顏色區分。
+- 點擊活動查看時段與偏好 (手機也可用)。
 - 表格**可搜索及排序**。
 - 用戶可**下載 CSV 檔案**儲存進度。
 
@@ -93,14 +108,15 @@ This app assigns kids to extracurricular programs based on their preferences, pr
 3. 預覽上傳檔案。
 4. 生成分配結果。
 5. 查看顏色標示的分配表。
-6. 下載 CSV 保存。
+6. 查看統計摘要。
+7. 下載 CSV 保存。
         """)
 
 # ---------------- Sidebar Settings ----------------
 st.sidebar.subheader(max_programs_text)
 max_programs_per_kid = st.sidebar.number_input(max_programs_text, min_value=1, value=1)
 
-# ---------------- Time Slot Reference Table ----------------
+# ---------------- Time Slot Table ----------------
 time_slot_mapping = {1: "12:50-2:20", 2: "2:20-3:50", 3: "Undefined"}
 st.subheader("Time Slots / 時段對照")
 time_slots_df = pd.DataFrame([
@@ -129,7 +145,7 @@ def preview_file(file):
     try:
         df = pd.read_csv(file)
         st.write(preview_text)
-        st.dataframe(df.head())
+        st.dataframe(df.head(), use_container_width=True)
         return df
     except Exception as e:
         st.error(f"Error reading CSV: {e}")
@@ -176,54 +192,58 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
                     program_slots[slot_key] -= 1
     return assigned_programs
 
-# ---------------- Color Function with Preference ----------------
-def get_program_colors(program_names, preference_rank):
-    base_palette = ['#FF9999','#99FF99','#9999FF','#FFD699','#FF99FF','#99FFFF','#FFCC99','#CCFF99','#99CCFF','#FF6666']
-    colors = {}
-    for i, prog in enumerate(program_names):
-        base_color = base_palette[i % len(base_palette)]
-        # Adjust brightness based on preference_rank (1=brightest)
-        factor = max(0.4, 1 - 0.2*(preference_rank-1))
-        # Simple hex dimming
-        r = int(int(base_color[1:3],16)*factor)
-        g = int(int(base_color[3:5],16)*factor)
-        b = int(int(base_color[5:7],16)*factor)
-        colors[prog] = f'#{r:02X}{g:02X}{b:02X}'
-    return colors
-
 # ---------------- Main Logic ----------------
 if saved_file:
     df_assignments = pd.read_csv(saved_file)
     st.subheader("Loaded Previous Assignments")
-    st.dataframe(df_assignments)
+    st.dataframe(df_assignments, use_container_width=True)
 elif df_programs is not None and df_kids is not None:
-    # Convert kids CSV to dict
-    kids_preferences = {}
-    for idx, row in df_kids.iterrows():
-        kid_name = row[0]
-        prefs = [p for p in row[1:] if pd.notna(p)]
-        kids_preferences[kid_name] = prefs
-
+    kids_preferences = {row[0]: [p for p in row[1:] if pd.notna(p)] for _, row in df_kids.iterrows()}
     assignments = assign_programs_with_times(kids_preferences, df_programs, max_programs_per_kid)
 
-    # Assign colors based on preference
+    table_rows = []
     program_names = df_programs['ProgramName'].unique()
-    st.subheader(assignments_text)
-    assignment_rows = []
     for kid, progs in assignments.items():
-        colored_progs = []
         for p in progs:
             prog_name = p.split(" ")[0]
-            # Determine rank (position in preference)
+            day = p.split("(")[1].split(" ")[0]
+            slot = int(p.split("slot ")[1].replace(")",""))
             prefs = kids_preferences[kid]
             rank = prefs.index(prog_name)+1 if prog_name in prefs else 3
-            color = get_program_colors([prog_name], rank)[prog_name]
-            colored_progs.append(f"<span style='background-color:{color};padding:3px;border-radius:3px;'>{p}</span>")
-        assignment_rows.append({'Kid': kid, 'Assigned Programs': ', '.join(progs)})
-        st.markdown(f"- **{kid}**: {' '.join(colored_progs)}", unsafe_allow_html=True)
+            table_rows.append({
+                'Kid': kid,
+                'Program': prog_name,
+                'Day': day,
+                'TimeSlot': slot,
+                'PreferenceRank': rank,
+                'Details': f"Day: {day}, Slot: {slot}, Preference: {rank}"
+            })
+    display_df = pd.DataFrame(table_rows)
 
-    # Download CSV
+    # Filters
+    st.sidebar.subheader(filters_text)
+    filter_day = st.sidebar.multiselect("Filter by Day", options=display_df['Day'].unique(), default=display_df['Day'].unique())
+    filter_program = st.sidebar.multiselect("Filter by Program", options=display_df['Program'].unique(), default=display_df['Program'].unique())
+    filtered_df = display_df[(display_df['Day'].isin(filter_day)) & (display_df['Program'].isin(filter_program))]
+
+    # Display Table
+    st.subheader(assignments_text)
+    st.dataframe(filtered_df[['Kid','Program','Details']], use_container_width=True)
+
+    # Summary
+    st.subheader(summary_text)
+    program_fill = filtered_df.groupby('Program').size().reset_index(name='AssignedCount')
+    program_fill = program_fill.merge(df_programs[['ProgramName','Capacity']], left_on='Program', right_on='ProgramName', how='left')
+    program_fill['FillRate'] = program_fill['AssignedCount'] / program_fill['Capacity']
+    st.dataframe(program_fill[['Program','AssignedCount','Capacity','FillRate']], use_container_width=True)
+
+    # Charts
+    fig = px.bar(filtered_df, x='PreferenceRank', y='Kid', color='Program', barmode='group', title="Preference Satisfaction")
+    fig.update_layout(xaxis={'dtick':1}, autosize=True)
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Download
     st.subheader(download_text)
-    download_df = pd.DataFrame(assignment_rows)
-    csv = download_df.to_csv(index=False)
+    csv_download_df = filtered_df.drop(columns=['Details'])
+    csv = csv_download_df.to_csv(index=False)
     st.download_button(label=download_button_label, data=csv, file_name="assignments.csv", mime="text/csv")
