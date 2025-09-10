@@ -3,16 +3,19 @@ import pandas as pd
 import random
 from PIL import Image
 
-# ---------------- Logo ----------------
+# ---------------- Logo (centered) ----------------
 logo = Image.open("logo.png")  # Place logo.png in same folder
-st.image(logo, width=250)  # fixed width
+st.markdown(
+    f"<div style='text-align: center;'><img src='logo.png' width='250'></div>",
+    unsafe_allow_html=True
+)
 
 # ---------------- Language Toggle ----------------
 language = st.sidebar.radio("Language / 語言", ("English", "繁體中文"))
 
 # ---------------- UI Text ----------------
 if language == "English":
-    title = "Extracurricular Program Assignment"
+    title = "Student Club Assignment Lottery"
     subtitle = "Assign kids to programs based on preferences, capacities, and time slots"
     upload_programs = "Upload Programs CSV"
     upload_programs_info = "CSV format: ProgramName, Capacity, Day, TimeSlot(1,2,3)"
@@ -26,15 +29,15 @@ if language == "English":
     preview_text = "Preview of Uploaded File"
     filters_text = "Filters"
     summary_text = "Summary Statistics"
-    compact_sidebar_text = "Compact Mode (hide sidebar)"
+    compact_sidebar_text = "Compact Mode (collapse sidebar)"
 else:
-    title = "課外活動分配系統"
-    subtitle = "根據偏好、名額與時段分配孩子到活動"
-    upload_programs = "上傳活動 CSV"
+    title = "學生社團分配抽籤系統"
+    subtitle = "根據偏好、名額與時段分配學生到社團活動"
+    upload_programs = "上傳社團活動 CSV"
     upload_programs_info = "CSV 格式: ProgramName, Capacity, Day, TimeSlot(1,2,3)"
     upload_kids = "上傳學生偏好 CSV"
     upload_kids_info = "CSV 格式: KidName, Preference1, Preference2, Preference3..."
-    max_programs_text = "每位學生最多可分配活動數"
+    max_programs_text = "每位學生最多可分配社團數"
     assignments_text = "分配結果"
     download_text = "下載分配結果 CSV"
     saved_file_text = "載入先前分配結果 (可選)"
@@ -42,7 +45,7 @@ else:
     preview_text = "上傳檔案預覽"
     filters_text = "篩選條件"
     summary_text = "統計摘要"
-    compact_sidebar_text = "簡潔模式 (隱藏側邊欄)"
+    compact_sidebar_text = "簡潔模式 (折疊側邊欄)"
 
 # ---------------- Page Title ----------------
 st.markdown(f"<h1 style='text-align: center; color: #2E86C1;'>{title}</h1>", unsafe_allow_html=True)
@@ -52,41 +55,41 @@ st.markdown("---")
 # ---------------- Compact Mode Toggle ----------------
 compact_mode = st.sidebar.checkbox(compact_sidebar_text, value=False)
 if compact_mode:
-    st.markdown("<style>section[data-testid='stSidebar']{display:none;}</style>", unsafe_allow_html=True)
+    st.sidebar.empty()  # temporarily hides sidebar content; user can still expand sidebar
 
 # ---------------- Collapsible Instructions ----------------
 with st.expander("How the Program Works / 如何運作", expanded=True):
     if language == "English":
         st.markdown("""
 ### Overview
-This app assigns kids to extracurricular programs based on their preferences, program capacities, and time slots.
+This app assigns kids to student clubs based on their preferences, program capacities, and time slots.
 
 ### Rules
-1. Each kid can list multiple program preferences.
-2. Programs have limited capacities per time slot.
-3. Assignments are done by preference ranking and random selection if multiple kids want the same program.
-4. **Conflict-free scheduling**: A kid will not be assigned to two programs that overlap in the same time slot.
+1. Each student can list multiple club preferences.
+2. Clubs have limited capacities per time slot.
+3. Assignments are done by preference ranking and random selection if multiple students want the same club.
+4. **Conflict-free scheduling**: A student will not be assigned to two clubs that overlap in the same time slot.
 
 ### How Results Are Displayed
 - Assignments are **shown on-screen** with color coding.
-- Tap a program to see day, slot, and preference rank (works on mobile).
+- Tap a club to see day, slot, and preference rank (works on mobile).
 - The table is **searchable and sortable**.
 - Users can **download results as CSV**.
         """)
     else:
         st.markdown("""
 ### 簡介
-本應用程式根據學生偏好、活動名額與時段將學生分配到課外活動。
+本應用程式根據學生偏好、社團名額與時段將學生分配到社團活動。
 
 ### 規則
-1. 每個孩子可以列出多個活動偏好。
-2. 每個活動在每個時段有固定名額。
-3. 分配依偏好順序進行，若多個孩子想選同一活動，將隨機抽籤分配。
-4. **避免時間衝突**: 孩子不會被分配到同一時段有衝突的兩個活動。
+1. 每個學生可以列出多個社團偏好。
+2. 每個社團在每個時段有固定名額。
+3. 分配依偏好順序進行，若多個學生想選同一社團，將隨機抽籤分配。
+4. **避免時間衝突**: 學生不會被分配到同一時段有衝突的兩個社團。
 
 ### 結果顯示方式
-- 分配結果會**顯示在螢幕上**，每個活動用顏色區分。
-- 點擊活動查看時段與偏好 (手機也可用)。
+- 分配結果會**顯示在螢幕上**，每個社團用顏色區分。
+- 點擊社團查看時段與偏好 (手機也可用)。
 - 表格**可搜索及排序**。
 - 用戶可**下載 CSV 檔案**儲存進度。
         """)
