@@ -3,12 +3,9 @@ import pandas as pd
 import random
 from PIL import Image
 
-# ---------------- Logo (centered) ----------------
-logo = Image.open("logo.png")  # Place logo.png in same folder
-st.markdown(
-    f"<div style='text-align: center;'><img src='logo.png' width='250'></div>",
-    unsafe_allow_html=True
-)
+# ---------------- Logo (centered properly) ----------------
+logo = Image.open("logo.png")  # Make sure logo.png is in the same folder as app.py
+st.image(logo, width=250)  # centers naturally in Streamlit
 
 # ---------------- Language Toggle ----------------
 language = st.sidebar.radio("Language / 語言", ("English", "繁體中文"))
@@ -55,14 +52,14 @@ st.markdown("---")
 # ---------------- Compact Mode Toggle ----------------
 compact_mode = st.sidebar.checkbox(compact_sidebar_text, value=False)
 if compact_mode:
-    st.sidebar.empty()  # temporarily hides sidebar content; user can still expand sidebar
+    st.sidebar.empty()  # sidebar content temporarily hidden; can restore using the arrow
 
 # ---------------- Collapsible Instructions ----------------
 with st.expander("How the Program Works / 如何運作", expanded=True):
     if language == "English":
         st.markdown("""
 ### Overview
-This app assigns kids to student clubs based on their preferences, program capacities, and time slots.
+This app assigns kids to student clubs based on their preferences, club capacities, and time slots.
 
 ### Rules
 1. Each student can list multiple club preferences.
