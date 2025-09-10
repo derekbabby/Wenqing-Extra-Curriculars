@@ -2,11 +2,10 @@ import streamlit as st
 import pandas as pd
 import random
 from PIL import Image
-import plotly.express as px
 
 # ---------------- Logo ----------------
 logo = Image.open("logo.png")  # Place logo.png in same folder
-st.image(logo, width=250)  # fixed width; removes deprecated warning
+st.image(logo, width=250)  # fixed width
 
 # ---------------- Language Toggle ----------------
 language = st.sidebar.radio("Language / 語言", ("English", "繁體中文"))
@@ -67,22 +66,12 @@ This app assigns kids to extracurricular programs based on their preferences, pr
 2. Programs have limited capacities per time slot.
 3. Assignments are done by preference ranking and random selection if multiple kids want the same program.
 4. **Conflict-free scheduling**: A kid will not be assigned to two programs that overlap in the same time slot.
-5. Preference-based color coding: brighter colors = higher preference, faded = lower preference.
 
 ### How Results Are Displayed
 - Assignments are **shown on-screen** with color coding.
 - Tap a program to see day, slot, and preference rank (works on mobile).
 - The table is **searchable and sortable**.
 - Users can **download results as CSV**.
-
-### Workflow
-1. Upload Programs CSV.
-2. Upload Kids Preferences CSV.
-3. Review uploaded files (preview shown).
-4. Generate assignments.
-5. Review assignments in color-coded table.
-6. View summary statistics.
-7. Download CSV for records.
         """)
     else:
         st.markdown("""
@@ -94,22 +83,12 @@ This app assigns kids to extracurricular programs based on their preferences, pr
 2. 每個活動在每個時段有固定名額。
 3. 分配依偏好順序進行，若多個孩子想選同一活動，將隨機抽籤分配。
 4. **避免時間衝突**: 孩子不會被分配到同一時段有衝突的兩個活動。
-5. 偏好顏色標示: 高偏好活動顏色較亮，低偏好較淡。
 
 ### 結果顯示方式
 - 分配結果會**顯示在螢幕上**，每個活動用顏色區分。
 - 點擊活動查看時段與偏好 (手機也可用)。
 - 表格**可搜索及排序**。
 - 用戶可**下載 CSV 檔案**儲存進度。
-
-### 使用流程
-1. 上傳活動 CSV。
-2. 上傳學生偏好 CSV。
-3. 預覽上傳檔案。
-4. 生成分配結果。
-5. 查看顏色標示的分配表。
-6. 查看統計摘要。
-7. 下載 CSV 保存。
         """)
 
 # ---------------- Sidebar Settings ----------------
@@ -202,7 +181,6 @@ elif df_programs is not None and df_kids is not None:
     assignments = assign_programs_with_times(kids_preferences, df_programs, max_programs_per_kid)
 
     table_rows = []
-    program_names = df_programs['ProgramName'].unique()
     for kid, progs in assignments.items():
         for p in progs:
             prog_name = p.split(" ")[0]
@@ -237,12 +215,7 @@ elif df_programs is not None and df_kids is not None:
     program_fill['FillRate'] = program_fill['AssignedCount'] / program_fill['Capacity']
     st.dataframe(program_fill[['Program','AssignedCount','Capacity','FillRate']], use_container_width=True)
 
-    # Charts
-    fig = px.bar(filtered_df, x='PreferenceRank', y='Kid', color='Program', barmode='group', title="Preference Satisfaction")
-    fig.update_layout(xaxis={'dtick':1}, autosize=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Download
+    # ---------------- Download CSV ----------------
     st.subheader(download_text)
     csv_download_df = filtered_df.drop(columns=['Details'])
     csv = csv_download_df.to_csv(index=False)
