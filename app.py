@@ -88,7 +88,6 @@ The lottery assigns students to clubs based on their submitted preferences, club
 # ---------------- Sidebar Settings ----------------
 st.sidebar.subheader(max_programs_text)
 max_programs_per_kid = st.sidebar.number_input(max_programs_text, min_value=1, value=1)
-auto_fill = st.sidebar.checkbox("Auto-fill remaining slots if available", value=False)
 
 # ---------------- Time Slot Table ----------------
 time_slot_mapping = {1: "12:50-2:20", 2: "2:20-3:50", 3: "Undefined"}
@@ -127,56 +126,60 @@ df_programs = preview_file(program_file) if program_file else None
 df_kids = preview_file(kids_file) if kids_file else None
 
 # ---------------- Assignment Function ----------------
-def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1, auto_fill=True):
+def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
+    """
+    Assign students to programs based on their preferences, capacities, and time slots.
+    Random selection is used when there are more applicants than slots.
+    Students cannot be assigned to overlapping time slots.
+    """
     assigned_programs = {kid: [] for kid in kids_prefs}
+    
+    # Build program slots: key = (program, day, timeslot), value = capacity
     program_slots = {}
     for _, row in programs_df.iterrows():
         key = (row['programname'], row['day'], int(row['timeslot']))
         program_slots[key] = row['capacity']
 
+    # Determine maximum number of preference rounds based on students' preferences
     max_rank = max(len(prefs) for prefs in kids_prefs.values())
+
+    # Process each preference round
     for rank in range(max_rank):
+        # Collect applicants for each program slot
         applicants_per_program = {}
         for kid, prefs in kids_prefs.items():
+            # Skip if student has reached max programs
             if len(assigned_programs[kid]) >= max_per_kid:
                 continue
+            # Only process if the student has this preference
             if rank < len(prefs):
-                occupied_slots = [a.split("slot ")[-1].replace(")","") for a in assigned_programs[kid]]
+                # Determine occupied time slots for this student
+                occupied_slots = [a.split("slot ")[-1].replace(")", "") for a in assigned_programs[kid]]
+                # Find available slots matching this preference
                 available_slots = [
-                    k for k in program_slots 
+                    k for k in program_slots
                     if k[0] == prefs[rank] and program_slots[k] > 0 and str(k[2]) not in occupied_slots
                 ]
                 if available_slots:
                     chosen_slot = random.choice(available_slots)
                     applicants_per_program.setdefault(chosen_slot, []).append(kid)
 
+        # Assign students to program slots
         for slot_key, applicants in applicants_per_program.items():
             available = program_slots[slot_key]
-            unassigned_applicants = [kid for kid in applicants if len(assigned_programs[kid]) < max_per_kid]
-            if len(unassigned_applicants) <= available:
-                for kid in unassigned_applicants:
+            # Filter applicants who are still under max programs
+            eligible_applicants = [kid for kid in applicants if len(assigned_programs[kid]) < max_per_kid]
+            if len(eligible_applicants) <= available:
+                # Assign all
+                for kid in eligible_applicants:
                     assigned_programs[kid].append(f"{slot_key[0]} ({slot_key[1]} slot {slot_key[2]})")
                     program_slots[slot_key] -= 1
             else:
-                selected = random.sample(unassigned_applicants, available)
+                # Randomly select to fill available slots
+                selected = random.sample(eligible_applicants, available)
                 for kid in selected:
                     assigned_programs[kid].append(f"{slot_key[0]} ({slot_key[1]} slot {slot_key[2]})")
                     program_slots[slot_key] -= 1
-
-    # --- Auto-fill remaining slots if enabled ---
-    if auto_fill:
-        for key, remaining in program_slots.items():
-            if remaining > 0:
-                eligible_kids = [
-                    kid for kid in assigned_programs
-                    if len(assigned_programs[kid]) < max_per_kid
-                    and str(key[2]) not in [a.split("slot ")[-1].replace(")","") for a in assigned_programs[kid]]
-                ]
-                if eligible_kids:
-                    chosen = random.sample(eligible_kids, min(remaining, len(eligible_kids)))
-                    for kid in chosen:
-                        assigned_programs[kid].append(f"{key[0]} ({key[1]} slot {key[2]})")
-                        program_slots[key] -= 1
 
     return assigned_programs
 
