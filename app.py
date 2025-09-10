@@ -4,7 +4,7 @@ import random
 from PIL import Image
 
 # ---------------- Logo (centered) ----------------
-logo = Image.open("logo.png")  # Ensure logo.png is in the same folder as app.py
+logo = Image.open("logo.png")  # Make sure logo.png is in the same folder as app.py
 st.image(logo, width=250)
 
 # ---------------- Sidebar ----------------
@@ -24,8 +24,8 @@ if language == "English":
     saved_file_text = "Load Previous Assignments (optional)"
     download_button_label = "Download CSV"
     preview_text = "Preview of Uploaded File"
-    filters_text = "Filters"
     summary_text = "Summary Statistics"
+    sort_option_label = "Sort Assignments By"
 else:
     title = "學生社團分配抽籤系統"
     subtitle = "根據偏好、名額與時段分配學生到社團活動"
@@ -39,8 +39,8 @@ else:
     saved_file_text = "載入先前分配結果 (可選)"
     download_button_label = "下載 CSV"
     preview_text = "上傳檔案預覽"
-    filters_text = "篩選條件"
     summary_text = "統計摘要"
+    sort_option_label = "排序方式"
 
 # ---------------- Page Title ----------------
 st.markdown(f"<h1 style='text-align: center; color: #2E86C1;'>{title}</h1>", unsafe_allow_html=True)
@@ -116,7 +116,6 @@ saved_file = st.file_uploader("", type=["csv"], key="saved_file")
 def preview_file(file, required_columns):
     try:
         df = pd.read_csv(file)
-        # Remove whitespace and lowercase headers
         df.columns = df.columns.str.strip().str.lower()
         missing_cols = [col.lower() for col in required_columns if col.lower() not in df.columns]
         if missing_cols:
@@ -171,62 +170,69 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
                     assigned_programs[kid].append(f"{slot_key[0]} ({slot_key[1]} slot {slot_key[2]})")
                     program_slots[slot_key] -= 1
     return assigned_programs
+
+# ---------------- Generate Button ----------------
+generate_button = st.button("Generate Assignments / 產生分配結果")
+
 # ---------------- Main Logic ----------------
-if saved_file:
-    try:
-        df_assignments = pd.read_csv(saved_file)
-        st.subheader("Loaded Previous Assignments")
-        st.dataframe(df_assignments, use_container_width=True)
-    except Exception as e:
-        st.error(f"Error loading saved assignments CSV: {e}")
-elif df_programs is not None and df_kids is not None:
-    # Build preferences dictionary
-    kids_preferences = {row[0]: [p for p in row[1:] if pd.notna(p)] for _, row in df_kids.iterrows()}
+if generate_button:
+    if saved_file:
+        try:
+            df_assignments = pd.read_csv(saved_file)
+            st.subheader("Loaded Previous Assignments")
+            st.dataframe(df_assignments, use_container_width=True)
+        except Exception as e:
+            st.error(f"Error loading saved assignments CSV: {e}")
 
-    # Run assignment
-    assignments = assign_programs_with_times(kids_preferences, df_programs, max_programs_per_kid)
+    elif df_programs is not None and df_kids is not None:
+        # Build preferences dictionary
+        kids_preferences = {row[0]: [p for p in row[1:] if pd.notna(p)] for _, row in df_kids.iterrows()}
 
-    # Build display DataFrame
-    table_rows = []
-    for kid, progs in assignments.items():
-        for p in progs:
-            try:
-                prog_name = p.split(" ")[0]
-                day = p.split("(")[1].split(" ")[0]
-                slot = int(p.split("slot ")[1].replace(")",""))
-                prefs = kids_preferences[kid]
-                rank = prefs.index(prog_name)+1 if prog_name in prefs else len(prefs)+1
-                table_rows.append({
-                    'Kid': kid,
-                    'Program': prog_name,
-                    'Day': day,
-                    'TimeSlot': slot,
-                    'PreferenceRank': rank,
-                    'Details': f"Day: {day}, Slot: {slot}, Preference: {rank}"
-                })
-            except Exception as e:
-                st.error(f"Error parsing assignment for {kid}: {e}")
-    display_df = pd.DataFrame(table_rows)
+        # Run assignment
+        assignments = assign_programs_with_times(kids_preferences, df_programs, max_programs_per_kid)
 
-    # ---------------- Filters ----------------
-    st.sidebar.subheader(filters_text)
-    filter_day = st.sidebar.multiselect("Filter by Day", options=display_df['Day'].unique(), default=display_df['Day'].unique())
-    filter_program = st.sidebar.multiselect("Filter by Program", options=display_df['Program'].unique(), default=display_df['Program'].unique())
-    filtered_df = display_df[(display_df['Day'].isin(filter_day)) & (display_df['Program'].isin(filter_program))]
+        # Build display DataFrame
+        table_rows = []
+        for kid, progs in assignments.items():
+            for p in progs:
+                try:
+                    prog_name = p.split(" ")[0]
+                    day = p.split("(")[1].split(" ")[0]
+                    slot = int(p.split("slot ")[1].replace(")",""))
+                    prefs = kids_preferences[kid]
+                    rank = prefs.index(prog_name)+1 if prog_name in prefs else len(prefs)+1
+                    table_rows.append({
+                        'Kid': kid,
+                        'Program': prog_name,
+                        'Day': day,
+                        'TimeSlot': slot,
+                        'PreferenceRank': rank,
+                        'Details': f"Day: {day}, Slot: {slot}, Preference: {rank}"
+                    })
+                except Exception as e:
+                    st.error(f"Error parsing assignment for {kid}: {e}")
+        display_df = pd.DataFrame(table_rows)
 
-    # ---------------- Display Assignments ----------------
-    st.subheader(assignments_text)
-    st.dataframe(filtered_df[['Kid','Program','Details']], use_container_width=True)
+        # ---------------- Sorting Option ----------------
+        sort_option = st.selectbox(sort_option_label, ["Kid / PreferenceRank", "Program / Day"])
+        if sort_option == "Kid / PreferenceRank":
+            display_df = display_df.sort_values(by=['Kid','PreferenceRank'])
+        else:
+            display_df = display_df.sort_values(by=['Program','Day','TimeSlot'])
 
-    # ---------------- Summary Statistics ----------------
-    st.subheader(summary_text)
-    program_fill = filtered_df.groupby('Program').size().reset_index(name='AssignedCount')
-    program_fill = program_fill.merge(df_programs[['programname','capacity']], left_on='Program', right_on='programname', how='left')
-    program_fill['FillRate'] = program_fill['AssignedCount'] / program_fill['capacity']
-    st.dataframe(program_fill[['Program','AssignedCount','capacity','FillRate']], use_container_width=True)
+        # ---------------- Display Table ----------------
+        st.subheader(assignments_text)
+        st.dataframe(display_df[['Kid','Program','Details']], use_container_width=True)
 
-    # ---------------- Download CSV ----------------
-    st.subheader(download_text)
-    csv_download_df = filtered_df.drop(columns=['Details'])
-    csv = csv_download_df.to_csv(index=False)
-    st.download_button(label=download_button_label, data=csv, file_name="assignments.csv", mime="text/csv")
+        # ---------------- Summary ----------------
+        st.subheader(summary_text)
+        program_fill = display_df.groupby('Program').size().reset_index(name='AssignedCount')
+        program_fill = program_fill.merge(df_programs[['programname','capacity']], left_on='Program', right_on='programname', how='left')
+        program_fill['FillRate'] = program_fill['AssignedCount'] / program_fill['capacity']
+        st.dataframe(program_fill[['Program','AssignedCount','capacity','FillRate']], use_container_width=True)
+
+        # ---------------- Download CSV ----------------
+        st.subheader(download_text)
+        csv_download_df = display_df.drop(columns=['Details'])
+        csv = csv_download_df.to_csv(index=False)
+        st.download_button(label=download_button_label, data=csv, file_name="assignments.csv", mime="text/csv")
