@@ -29,7 +29,7 @@ else:
     title = "學生社團分配抽籤系統"
     subtitle = "根據偏好、名額與時段分配學生到社團活動"
     upload_programs = "上傳社團活動 CSV"
-    upload_programs_info = "CSV 格式: ProgramName, Capacity, Day, TimeSlot(1,2,3)"
+    upload_programs_info = "CSV 格式: ProgramName, Capacity, Day, TimeSlot"
     upload_kids = "上傳學生偏好 CSV"
     upload_kids_info = "CSV 格式: KidName, Preference1, Preference2, Preference3..."
     max_programs_text = "每位學生最多可分配社團數"
