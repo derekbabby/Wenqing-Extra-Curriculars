@@ -48,15 +48,15 @@ with st.expander("How the Student Club Assignment Lottery Works / 學生社團�
 The lottery assigns students to clubs based on their submitted preferences, club capacities, and time slots.
 
 ### How the Draw Works
-1. Each student lists up to 3 preferences for clubs.
-2. Each club has a limited number of slots for each day/time.
-3. Assignments are processed in rounds by **preference ranking**:
-   - Round 1: Try to assign all students to their first preference.
-   - Round 2: Assign remaining students to their second preference if available.
-   - Round 3: Assign remaining students to their third preference if available.
-4. If more students request a club than there are slots, **random selection** is used.
-5. Students cannot be assigned to two clubs that overlap in the same time slot.
-6. A student can be assigned up to the **maximum programs per student** as set in the sidebar.
+- Each student can list multiple preferences for clubs (not limited to 3 — the system uses however many `Preference` columns are included in the student CSV).
+- Each club has a limited number of slots for each day/time.
+- Assignments are processed in rounds by preference ranking:
+  - Round 1: Try to assign all students to their first preference.
+  - Round 2: Assign remaining students to their second preference if available.
+  - Round 3 and beyond: Continue processing additional preference columns in order.
+- If more students request a club than there are slots, random selection is used.
+- Students cannot be assigned to two clubs that overlap in the same time slot.
+- A student can be assigned up to the maximum number of programs per student, as set in the sidebar.
 
 ### Results
 - Assignments are displayed on screen in a scrollable table.
@@ -66,23 +66,23 @@ The lottery assigns students to clubs based on their submitted preferences, club
     else:
         st.markdown("""
 ### 簡介
-抽籤系統根據學生提交的偏好、社團名額與時段，將學生分配到社團。
+抽籤系統會依照學生填寫的偏好、社團名額與時段，將學生分配到社團。
 
-### 抽籤流程
-1. 每位學生最多列出三個社團偏好。
-2. 每個社團在每個時段有固定名額。
-3. 分配依偏好順序進行：
-   - 第一輪：盡量將學生分配到第一偏好。
-   - 第二輪：將未分配的學生分配到第二偏好（若名額允許）。
-   - 第三輪：將未分配的學生分配到第三偏好（若名額允許）。
-4. 若申請人數超過社團名額，將以**隨機抽籤**決定分配。
-5. 學生不可被分配到同一時段有衝突的兩個社團。
-6. 每位學生最多可被分配到**側邊欄設定的最大社團數**。
+### 抽籤方式
+- 每位學生可填寫多個社團偏好（不限於 3 個，系統會依 CSV 中的 `Preference` 欄位數量進行處理）。
+- 每個社團在各時段有固定名額。
+- 分配依偏好順序分回合進行：
+  - 第 1 回合：盡量將所有學生分配到第一志願。
+  - 第 2 回合：將未分配的學生分配到第二志願（若有空位）。
+  - 第 3 回合及之後：依序處理更多偏好欄位。
+- 若同一社團申請人數超過名額，將以隨機方式抽籤。
+- 學生不會被分配到同一時段重疊的兩個社團。
+- 每位學生最多可被分配到的社團數量，由側邊欄設定。
 
 ### 結果
-- 分配結果會在螢幕上以可滾動表格顯示。
-- 每一行表示一個學生與社團的分配。
-- 可下載 CSV 文件以保存分配結果。
+- 分配結果會顯示在螢幕上的可捲動表格中。
+- 每一列代表一位學生的一個社團分配。
+- 您可以下載結果為 CSV 檔，以便儲存或分享。
         """)
 
 # ---------------- Sidebar Settings ----------------
