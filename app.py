@@ -59,8 +59,7 @@ This app assigns kids to student clubs based on their preferences, club capaciti
 4. **Conflict-free scheduling**: A student will not be assigned to two clubs that overlap in the same time slot.
 
 ### How Results Are Displayed
-- Assignments are **shown on-screen** with color coding.
-- Tap a club to see day, slot, and preference rank (works on mobile).
+- Assignments are **shown on-screen**.
 - The table is **searchable and scrollable**.
 - Users can **download results as CSV**.
         """)
@@ -76,8 +75,7 @@ This app assigns kids to student clubs based on their preferences, club capaciti
 4. **避免時間衝突**: 學生不會被分配到同一時段有衝突的兩個社團。
 
 ### 結果顯示方式
-- 分配結果會**顯示在螢幕上**，每個社團用顏色區分。
-- 點擊社團查看時段與偏好 (手機也可用)。
+- 分配結果會**顯示在螢幕上**。
 - 表格**可搜索及捲動**。
 - 用戶可**下載 CSV 檔案**儲存進度。
         """)
@@ -118,7 +116,7 @@ def preview_file_full(file, required_columns):
             st.error(f"CSV is missing required columns: {missing_cols}")
             return None
         st.write(preview_text)
-        st.dataframe(df, use_container_width=True)  # full scrollable preview
+        st.dataframe(df, use_container_width=True)
         return df
     except Exception as e:
         st.error(f"Error reading CSV: {e}")
@@ -198,18 +196,10 @@ if generate_button:
             display_df = display_df.sort_values(by=['Kid','PreferenceRank'])
         else:
             display_df = display_df.sort_values(by=['Program','Day','TimeSlot'])
-                    # ---------------- Color Coding Function ----------------
-        def color_pref(row):
-            if row['PreferenceRank'] == 1:
-                return ['background-color: #A9DFBF']*len(row)
-            elif row['PreferenceRank'] == 2:
-                return ['background-color: #F9E79F']*len(row)
-            else:
-                return ['background-color: #F5B7B1']*len(row)
 
         # ---------------- Display Assignments ----------------
         st.subheader(assignments_text)
-        st.dataframe(display_df.style.apply(color_pref, axis=1)[['Kid','Program','Details']], use_container_width=True)
+        st.dataframe(display_df[['Kid','Program','Details']], use_container_width=True)
 
         # ---------------- Summary Statistics ----------------
         st.subheader(summary_text)
@@ -224,4 +214,4 @@ if generate_button:
         csv = csv_download_df.to_csv(index=False)
         st.download_button(label=download_button_label, data=csv, file_name="assignments.csv", mime="text/csv")
     else:
-        st.error("Please upload both Programs and Kids CSV files before generating assignments.")
+               st.error("Please upload both Programs and Kids CSV files before generating assignments.")
