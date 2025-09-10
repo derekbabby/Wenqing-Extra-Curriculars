@@ -118,7 +118,7 @@ def preview_file_full(file, required_columns):
             st.error(f"CSV is missing required columns: {missing_cols}")
             return None
         st.write(preview_text)
-        st.dataframe(df, use_container_width=True)  # display full file scrollable
+        st.dataframe(df, use_container_width=True)  # full scrollable preview
         return df
     except Exception as e:
         st.error(f"Error reading CSV: {e}")
@@ -132,7 +132,6 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
     assigned_programs = {kid: [] for kid in kids_prefs}
     program_slots = {}
     for _, row in programs_df.iterrows():
-        # lowercase matching
         key = (row['programname'], row['day'], int(row['timeslot']))
         program_slots[key] = row['capacity']
 
@@ -171,13 +170,9 @@ generate_button = st.button("Generate Assignments / 產生分配結果")
 # ---------------- Main Logic ----------------
 if generate_button:
     if df_programs is not None and df_kids is not None:
-        # Prepare kids preferences dictionary
         kids_preferences = {row[0]: [p for p in row[1:] if pd.notna(p)] for _, row in df_kids.iterrows()}
-        
-        # Run assignment algorithm
         assignments = assign_programs_with_times(kids_preferences, df_programs, max_programs_per_kid)
 
-        # Build display DataFrame
         table_rows = []
         for kid, progs in assignments.items():
             for p in progs:
@@ -203,26 +198,25 @@ if generate_button:
             display_df = display_df.sort_values(by=['Kid','PreferenceRank'])
         else:
             display_df = display_df.sort_values(by=['Program','Day','TimeSlot'])
-
-        # ---------------- Display Assignments ----------------
-        st.subheader(assignments_text)
-
+                    # ---------------- Color Coding Function ----------------
         def color_pref(row):
-            if row['PreferenceRank']==1:
+            if row['PreferenceRank'] == 1:
                 return ['background-color: #A9DFBF']*len(row)
-            elif row['PreferenceRank']==2:
+            elif row['PreferenceRank'] == 2:
                 return ['background-color: #F9E79F']*len(row)
             else:
                 return ['background-color: #F5B7B1']*len(row)
 
-        st.dataframe(display_df[['Kid','Program','Details']].style.apply(color_pref, axis=1), use_container_width=True)
+        # ---------------- Display Assignments ----------------
+        st.subheader(assignments_text)
+        st.dataframe(display_df.style.apply(color_pref, axis=1)[['Kid','Program','Details']], use_container_width=True)
 
-        # ---------------- Summary ----------------
+        # ---------------- Summary Statistics ----------------
         st.subheader(summary_text)
         program_fill = display_df.groupby('Program').size().reset_index(name='AssignedCount')
-        program_fill = program_fill.merge(df_programs[['programname','capacity']], left_on='Program', right_on='programname', how='left')
-        program_fill['FillRate'] = program_fill['AssignedCount'] / program_fill['capacity']
-        st.dataframe(program_fill[['Program','AssignedCount','capacity','FillRate']], use_container_width=True)
+        program_fill = program_fill.merge(df_programs[['ProgramName','Capacity']], left_on='Program', right_on='ProgramName', how='left')
+        program_fill['FillRate'] = program_fill['AssignedCount'] / program_fill['Capacity']
+        st.dataframe(program_fill[['Program','AssignedCount','Capacity','FillRate']], use_container_width=True)
 
         # ---------------- Download CSV ----------------
         st.subheader(download_text)
@@ -230,4 +224,4 @@ if generate_button:
         csv = csv_download_df.to_csv(index=False)
         st.download_button(label=download_button_label, data=csv, file_name="assignments.csv", mime="text/csv")
     else:
-        st.warning("Please upload both Programs CSV and Kids Preferences CSV before generating assignments.")
+        st.error("Please upload both Programs and Kids CSV files before generating assignments.")
