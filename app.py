@@ -15,13 +15,12 @@ if language == "English":
     title = "Student Club Assignment Lottery"
     subtitle = "Assign kids to programs based on preferences, capacities, and time slots"
     upload_programs = "Upload Programs CSV"
-    upload_programs_info = "CSV format: ProgramName, Capacity, Day, TimeSlot(1,2,3)"
+    upload_programs_info = "CSV format: ProgramName, Capacity, Day, TimeSlot"
     upload_kids = "Upload Kids Preferences CSV"
     upload_kids_info = "CSV format: KidName, Preference1, Preference2, Preference3..."
     max_programs_text = "Max Programs per Kid"
     assignments_text = "Assignments"
     download_text = "Download Assignments CSV"
-    saved_file_text = "Load Previous Assignments (optional)"
     download_button_label = "Download CSV"
     preview_text = "Preview of Uploaded File"
     summary_text = "Summary Statistics"
@@ -36,7 +35,6 @@ else:
     max_programs_text = "每位學生最多可分配社團數"
     assignments_text = "分配結果"
     download_text = "下載分配結果 CSV"
-    saved_file_text = "載入先前分配結果 (可選)"
     download_button_label = "下載 CSV"
     preview_text = "上傳檔案預覽"
     summary_text = "統計摘要"
@@ -63,7 +61,7 @@ This app assigns kids to student clubs based on their preferences, club capaciti
 ### How Results Are Displayed
 - Assignments are **shown on-screen** with color coding.
 - Tap a club to see day, slot, and preference rank (works on mobile).
-- The table is **searchable and sortable**.
+- The table is **searchable and scrollable**.
 - Users can **download results as CSV**.
         """)
     else:
@@ -80,7 +78,7 @@ This app assigns kids to student clubs based on their preferences, club capaciti
 ### 結果顯示方式
 - 分配結果會**顯示在螢幕上**，每個社團用顏色區分。
 - 點擊社團查看時段與偏好 (手機也可用)。
-- 表格**可搜索及排序**。
+- 表格**可搜索及捲動**。
 - 用戶可**下載 CSV 檔案**儲存進度。
         """)
 
@@ -109,39 +107,33 @@ st.subheader(upload_kids)
 st.markdown(upload_kids_info)
 kids_file = st.file_uploader("", type=["csv"], key="kids_file")
 
-st.subheader(saved_file_text)
-saved_file = st.file_uploader("", type=["csv"], key="saved_file")
-
 # ---------------- CSV Preview ----------------
-def preview_file(file, required_columns):
+def preview_file_full(file, required_columns):
     try:
         df = pd.read_csv(file)
-        df.columns = df.columns.str.strip().str.lower()
-        missing_cols = [col.lower() for col in required_columns if col.lower() not in df.columns]
+        df.columns = df.columns.str.strip()
+        missing_cols = [col for col in required_columns if col not in df.columns]
         if missing_cols:
             st.error(f"CSV is missing required columns: {missing_cols}")
             return None
         st.write(preview_text)
-        st.dataframe(df.head(), use_container_width=True)
+        st.dataframe(df, use_container_width=True)  # display full file, scrollable
         return df
     except Exception as e:
         st.error(f"Error reading CSV: {e}")
         return None
 
-df_programs = preview_file(program_file, ["ProgramName","Capacity","Day","TimeSlot"]) if program_file else None
-df_kids = preview_file(kids_file, ["KidName","Preference1","Preference2","Preference3"]) if kids_file else None
+df_programs = preview_file_full(program_file, ["ProgramName","Capacity","Day","TimeSlot"]) if program_file else None
+df_kids = preview_file_full(kids_file, ["KidName","Preference1","Preference2","Preference3"]) if kids_file else None
 
 # ---------------- Assignment Function ----------------
 def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
     assigned_programs = {kid: [] for kid in kids_prefs}
     program_slots = {}
     for _, row in programs_df.iterrows():
-        try:
-            key = (row['programname'], row['day'], int(row['timeslot']))
-            program_slots[key] = row['capacity']
-        except KeyError as e:
-            st.error(f"Missing column in programs CSV: {e}")
-            return {}
+        key = (row['ProgramName'], row['Day'], int(row['TimeSlot']))
+        program_slots[key] = row['Capacity']
+
     max_rank = max(len(prefs) for prefs in kids_prefs.values())
     for rank in range(max_rank):
         applicants_per_program = {}
@@ -151,7 +143,7 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
             if rank < len(prefs):
                 occupied_slots = [a.split("slot ")[-1].replace(")","") for a in assigned_programs[kid]]
                 available_slots = [
-                    k for k in program_slots 
+                    k for k in program_slots
                     if k[0] == prefs[rank] and program_slots[k] > 0 and str(k[2]) not in occupied_slots
                 ]
                 if available_slots:
@@ -173,44 +165,33 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
 
 # ---------------- Generate Button ----------------
 generate_button = st.button("Generate Assignments / 產生分配結果")
-
 # ---------------- Main Logic ----------------
 if generate_button:
-    if saved_file:
-        try:
-            df_assignments = pd.read_csv(saved_file)
-            st.subheader("Loaded Previous Assignments")
-            st.dataframe(df_assignments, use_container_width=True)
-        except Exception as e:
-            st.error(f"Error loading saved assignments CSV: {e}")
-
-    elif df_programs is not None and df_kids is not None:
-        # Build preferences dictionary
+    if df_programs is not None and df_kids is not None:
+        # Prepare kids preferences dictionary
         kids_preferences = {row[0]: [p for p in row[1:] if pd.notna(p)] for _, row in df_kids.iterrows()}
-
-        # Run assignment
+        
+        # Run assignment algorithm
         assignments = assign_programs_with_times(kids_preferences, df_programs, max_programs_per_kid)
 
         # Build display DataFrame
         table_rows = []
         for kid, progs in assignments.items():
             for p in progs:
-                try:
-                    prog_name = p.split(" ")[0]
-                    day = p.split("(")[1].split(" ")[0]
-                    slot = int(p.split("slot ")[1].replace(")",""))
-                    prefs = kids_preferences[kid]
-                    rank = prefs.index(prog_name)+1 if prog_name in prefs else len(prefs)+1
-                    table_rows.append({
-                        'Kid': kid,
-                        'Program': prog_name,
-                        'Day': day,
-                        'TimeSlot': slot,
-                        'PreferenceRank': rank,
-                        'Details': f"Day: {day}, Slot: {slot}, Preference: {rank}"
-                    })
-                except Exception as e:
-                    st.error(f"Error parsing assignment for {kid}: {e}")
+                prog_name = p.split(" ")[0]
+                day = p.split("(")[1].split(" ")[0]
+                slot = int(p.split("slot ")[1].replace(")",""))
+                prefs = kids_preferences[kid]
+                rank = prefs.index(prog_name)+1 if prog_name in prefs else len(prefs)+1
+                table_rows.append({
+                    'Kid': kid,
+                    'Program': prog_name,
+                    'Day': day,
+                    'TimeSlot': slot,
+                    'PreferenceRank': rank,
+                    'Details': f"Day: {day}, Slot: {slot}, Preference: {rank}"
+                })
+
         display_df = pd.DataFrame(table_rows)
 
         # ---------------- Sorting Option ----------------
@@ -220,19 +201,30 @@ if generate_button:
         else:
             display_df = display_df.sort_values(by=['Program','Day','TimeSlot'])
 
-        # ---------------- Display Table ----------------
+        # ---------------- Display Assignments ----------------
         st.subheader(assignments_text)
-        st.dataframe(display_df[['Kid','Program','Details']], use_container_width=True)
+
+        def color_pref(row):
+            if row['PreferenceRank']==1:
+                return ['background-color: #A9DFBF']*len(row)
+            elif row['PreferenceRank']==2:
+                return ['background-color: #F9E79F']*len(row)
+            else:
+                return ['background-color: #F5B7B1']*len(row)
+
+        st.dataframe(display_df[['Kid','Program','Details']].style.apply(color_pref, axis=1), use_container_width=True)
 
         # ---------------- Summary ----------------
         st.subheader(summary_text)
         program_fill = display_df.groupby('Program').size().reset_index(name='AssignedCount')
-        program_fill = program_fill.merge(df_programs[['programname','capacity']], left_on='Program', right_on='programname', how='left')
-        program_fill['FillRate'] = program_fill['AssignedCount'] / program_fill['capacity']
-        st.dataframe(program_fill[['Program','AssignedCount','capacity','FillRate']], use_container_width=True)
+        program_fill = program_fill.merge(df_programs[['ProgramName','Capacity']], left_on='Program', right_on='ProgramName', how='left')
+        program_fill['FillRate'] = program_fill['AssignedCount'] / program_fill['Capacity']
+        st.dataframe(program_fill[['Program','AssignedCount','Capacity','FillRate']], use_container_width=True)
 
         # ---------------- Download CSV ----------------
         st.subheader(download_text)
         csv_download_df = display_df.drop(columns=['Details'])
         csv = csv_download_df.to_csv(index=False)
         st.download_button(label=download_button_label, data=csv, file_name="assignments.csv", mime="text/csv")
+    else:
+        st.warning("Please upload both Programs CSV and Kids Preferences CSV before generating assignments.")
