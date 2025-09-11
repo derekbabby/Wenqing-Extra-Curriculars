@@ -189,8 +189,7 @@ if st.button("Generate Assignments / 生成分配"):
         required_cols = ['programname','capacity','day','timeslot']
         missing_cols = [c for c in required_cols if c not in df_programs.columns]
         if missing_cols:
-            st.error(f"Programs
-                        st.error(f"Programs CSV is missing required columns: {missing_cols}")
+            st.error(f"Programs CSV is missing required columns: {missing_cols}")
         else:
             # ---------------- Step 1: Clean and normalize names ----------------
             kids_preferences = {}
