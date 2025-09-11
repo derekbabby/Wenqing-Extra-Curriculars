@@ -78,7 +78,74 @@ The lottery assigns students to clubs based on their submitted preferences, club
 - 分配結果會顯示在螢幕上。
 - 您可以下載結果為 CSV 檔。
         """)
+# ---------------- Usage Instructions Collapsible ----------------
+with st.expander("How to Use the System / 系統使用說明", expanded=False):
+    if language == "English":
+        st.markdown("""
+### Step 1: Prepare Programs CSV
+- CSV must include the following columns: `ProgramName`, `Capacity`, `Day`, `Timeslot`.
+- `ProgramName`: Name of the club/program (case-insensitive).
+- `Capacity`: Maximum number of students allowed in the program.
+- `Day`: Weekday (Monday, Tuesday, etc.).
+- `Timeslot`: Slot number (1, 2, 3), corresponding to the time slot table shown above.
+- Make sure there are no extra spaces in the program names.
 
+### Step 2: Prepare Kids Preferences CSV
+- First column: `KidName`.
+- Remaining columns: `Preference1`, `Preference2`, etc. (number of preferences can vary per student).
+- Preferences must match the program names in the Programs CSV (case-insensitive, whitespace ignored).
+
+### Step 3: Upload Files
+- Upload Programs CSV first, then Kids Preferences CSV.
+- You will see a preview of each uploaded file.
+
+### Step 4: Set Max Programs
+- In the sidebar, set “Max Programs per Kid” (default 1).
+- This limits how many programs a student can be assigned.
+
+### Step 5: Generate Assignments
+- Click “Generate Assignments” button.
+- Assignments will appear in a scrollable table.
+- You can download the results as a CSV.
+
+### Tips
+- Avoid typos in program names; use consistent spelling.
+- Students will not be assigned to overlapping time slots.
+- Random selection is used when too many students request the same program.
+        """)
+    else:
+        st.markdown("""
+### 步驟 1：準備社團活動 CSV
+- CSV 必須包含欄位：`ProgramName`、`Capacity`、`Day`、`Timeslot`。
+- `ProgramName`：社團名稱（不分大小寫）。
+- `Capacity`：該社團最多可容納學生數。
+- `Day`：星期幾（Monday, Tuesday 等）。
+- `Timeslot`：時段編號（1, 2, 3），對應上方時段表。
+- 確保社團名稱不要多餘空格。
+
+### 步驟 2：準備學生偏好 CSV
+- 第一欄：`KidName`。
+- 後續欄位：`Preference1`, `Preference2` 等（每位學生可填多個）。
+- 偏好必須與 Programs CSV 的社團名稱一致（不分大小寫，忽略空格）。
+
+### 步驟 3：上傳檔案
+- 先上傳 Programs CSV，再上傳 Kids Preferences CSV。
+- 上傳後可看到檔案預覽。
+
+### 步驟 4：設定每位學生最多分配社團數
+- 在側邊欄設定 “每位學生最多可分配社團數”（預設 1）。
+- 限制學生最多可分配的社團數量。
+
+### 步驟 5：生成分配結果
+- 點擊 “生成分配” 按鈕。
+- 分配結果將顯示在可捲動表格中。
+- 可下載 CSV 保存結果。
+
+### 小提示
+- 避免社團名稱拼寫錯誤，保持一致。
+- 學生不會被分配到同一時段重疊的社團。
+- 當太多學生選擇同一社團時，系統將隨機抽籤。
+        """)
 # ---------------- Sidebar Settings ----------------
 st.sidebar.subheader(max_programs_text)
 max_programs_per_kid = st.sidebar.number_input(max_programs_text, min_value=1, value=1)
