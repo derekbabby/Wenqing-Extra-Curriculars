@@ -249,16 +249,38 @@ if st.button("Generate Assignments / 生成分配"):
             st.subheader("Summary Statistics / 統計摘要")
             # Normalize program names
             df_programs['programname_clean'] = df_programs['programname'].str.strip()
-            program_fill = display_df.groupby('Program').size().reset_index(name='AssignedCount')
-            program_fill['Program_clean'] = program_fill['Program'].str.strip()
+
+            # Extract just the program name from the assigned string
+            program_fill = display_df.copy()
+            program_fill['Program_clean'] = program_fill['Program'].str.split(' \(').str[0].str.strip()
+
+            # Group by cleaned program name
+            program_fill = program_fill.groupby('Program_clean').size().reset_index(name='AssignedCount')
+
             # Map capacity
             program_capacity_map = dict(zip(df_programs['programname_clean'], df_programs['capacity']))
             program_fill['capacity'] = program_fill['Program_clean'].map(program_capacity_map)
+
             # Fill rate
             program_fill['FillRate'] = program_fill.apply(
                 lambda row: row['AssignedCount'] / row['capacity'] if row['capacity'] > 0 else 0,
                 axis=1
             )
+
+            # Rename Program_clean back to Program for display
+            program_fill.rename(columns={'Program_clean': 'Program'}, inplace=True)
+
+            # Add totals row
+            totals = pd.DataFrame([{
+                'Program': 'Total',
+                'AssignedCount': program_fill['AssignedCount'].sum(),
+                'capacity': program_fill['capacity'].sum(),
+                'FillRate': program_fill['AssignedCount'].sum() / program_fill['capacity'].sum() 
+                    if program_fill['capacity'].sum() > 0 else 0
+            }])
+            summary_df = pd.concat([program_fill, totals], ignore_index=True)
+            st.dataframe(summary_df, use_container_width=True)
+            
             # Add totals row
             totals = pd.DataFrame([{
                 'Program': 'Total',
