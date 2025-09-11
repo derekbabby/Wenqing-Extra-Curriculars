@@ -205,13 +205,18 @@ if st.button("Generate Assignments / 生成分配"):
         if missing_cols:
             st.error(f"Programs CSV is missing required columns: {missing_cols}")
         else:
+            # Step 1: Strip whitespace from all preferences
             kids_preferences = {
                 row[0]: [str(p).strip() for p in row[1:] if pd.notna(p) and str(p).strip()]
                 for _, row in df_kids.iterrows()
             }
-            all_program_names = set(df_programs['programname'].str.lower())
+
+            # Step 2: Build lowercase -> original mapping of program names
+            valid_program_names_lower = {p.lower(): p for p in df_programs['programname']}
+
+            # Step 3: Keep only valid preferences and normalize to exact program name
             kids_preferences = {
-                kid: [p for p in prefs if p.lower() in all_program_names]
+                kid: [valid_program_names_lower[p.lower()] for p in prefs if p.lower() in valid_program_names_lower]
                 for kid, prefs in kids_preferences.items()
             }
             assignments = assign_programs_with_times(kids_preferences, df_programs, max_programs_per_kid)
@@ -243,7 +248,10 @@ if st.button("Generate Assignments / 生成分配"):
             program_fill = program_fill.merge(
                 df_programs[['programname','capacity']], left_on='Program', right_on='programname', how='left'
             )
-            program_fill['FillRate'] = program_fill['AssignedCount'] / program_fill['capacity']
+            program_fill['FillRate'] = program_fill.apply(
+                lambda row: row['AssignedCount'] / row['capacity'] if row['capacity'] > 0 else 0,
+                axis=1
+            )
             st.dataframe(program_fill[['Program','AssignedCount','capacity','FillRate']], use_container_width=True)
 
             # Download CSV
