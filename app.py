@@ -219,8 +219,11 @@ if st.button("Generate Assignments / 生成分配"):
                 kid: [valid_program_names_lower[p.lower()] for p in prefs if p.lower() in valid_program_names_lower]
                 for kid, prefs in kids_preferences.items()
             }
+
+            # Step 4: Assign programs
             assignments = assign_programs_with_times(kids_preferences, df_programs, max_programs_per_kid)
 
+            # Step 5: Prepare display dataframe
             table_rows = []
             for kid, progs in assignments.items():
                 for p in progs:
@@ -228,7 +231,7 @@ if st.button("Generate Assignments / 生成分配"):
                     day = p.split("(")[1].split(" ")[0]
                     slot = int(p.split("slot ")[1].replace(")",""))
                     prefs = kids_preferences[kid]
-                    rank = prefs.index(prog_name)+1 if prog_name in prefs else 3
+                    rank = prefs.index(prog_name)+1 if prog_name in prefs else len(prefs)
                     table_rows.append({
                         'Kid': kid,
                         'Program': prog_name,
@@ -239,22 +242,37 @@ if st.button("Generate Assignments / 生成分配"):
                     })
             display_df = pd.DataFrame(table_rows).sort_values(by='Kid')
 
+            # Step 6: Show assignments
             st.subheader(assignments_text)
             st.dataframe(display_df[['Kid','Program','Details']], use_container_width=True)
 
-            # Summary
-            st.subheader("Summary Statistics / 統計摘要")
+            # ---------------- Summary Statistics ----------------
             program_fill = display_df.groupby('Program').size().reset_index(name='AssignedCount')
-            program_fill = program_fill.merge(
-                df_programs[['programname','capacity']], left_on='Program', right_on='programname', how='left'
-            )
+
+            # Map capacity from programs_df
+            program_capacity_map = dict(zip(df_programs['programname'], df_programs['capacity']))
+            program_fill['capacity'] = program_fill['Program'].map(program_capacity_map)
+
+            # Fill rate
             program_fill['FillRate'] = program_fill.apply(
                 lambda row: row['AssignedCount'] / row['capacity'] if row['capacity'] > 0 else 0,
                 axis=1
             )
+
+            # Add totals row
+            total_row = pd.DataFrame([{
+                'Program': 'Total',
+                'AssignedCount': program_fill['AssignedCount'].sum(),
+                'capacity': program_fill['capacity'].sum(),
+                'FillRate': program_fill['AssignedCount'].sum() / program_fill['capacity'].sum() 
+                            if program_fill['capacity'].sum() > 0 else 0
+            }])
+            program_fill = pd.concat([program_fill, total_row], ignore_index=True)
+
+            st.subheader("Summary Statistics / 統計摘要")
             st.dataframe(program_fill[['Program','AssignedCount','capacity','FillRate']], use_container_width=True)
 
-            # Download CSV
+            # ---------------- Download CSV ----------------
             st.subheader(download_text)
             csv_download_df = display_df.drop(columns=['Details'])
             st.download_button(
