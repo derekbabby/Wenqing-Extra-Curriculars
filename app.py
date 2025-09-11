@@ -138,7 +138,7 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
     assigned_programs = {kid: [] for kid in kids_prefs}  # {kid_name: [assigned_program strings]}
     program_slots = {}  # {(ProgramName, Day, TimeSlot): remaining_capacity}
     for _, row in programs_df.iterrows():
-        key = (row['programname'], row['day'], int(row['timeslot']))
+        key = (row['programname'].strip().lower(), row['day'].strip(), int(row['timeslot']))
         program_slots[key] = row['capacity']
         
 # ---------------- Filter out invalid preferences ----------------
@@ -173,7 +173,7 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
                 # Check for programs in the student's preferences that are actually available
                 available_slots = [
                     k for k in program_slots
-                    if k[0] == prefs[rank] and program_slots[k] > 0 and (k[1], k[2]) not in occupied_slots
+                    if k[0] == prefs[rank].strip().lower() and program_slots[k] > 0 and str(k[2]) not in occupied_slots
                 ]
 
                 if available_slots:
@@ -205,7 +205,15 @@ if st.button("Generate Assignments / 生成分配"):
         if missing_cols:
             st.error(f"Programs CSV is missing required columns: {missing_cols}")
         else:
-            kids_preferences = {row[0]: [p for p in row[1:] if pd.notna(p)] for _, row in df_kids.iterrows()}
+            kids_preferences = {
+                row[0]: [str(p).strip() for p in row[1:] if pd.notna(p) and str(p).strip()]
+                for _, row in df_kids.iterrows()
+            }
+            all_program_names = set(df_programs['programname'].str.lower())
+            kids_preferences = {
+                kid: [p for p in prefs if p.lower() in all_program_names]
+                for kid, prefs in kids_preferences.items()
+            }
             assignments = assign_programs_with_times(kids_preferences, df_programs, max_programs_per_kid)
 
             table_rows = []
