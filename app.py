@@ -192,62 +192,85 @@ def clean_name(name):
 
 # ---------------- Assignment Function ----------------
 def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1):
-    assigned_programs = {kid: [] for kid in kids_prefs}
-    # Program slots: key=(program, day, timeslot), value=remaining capacity
+    """
+    Assign students to programs based on preferences, capacities, and time slots.
+    Logic:
+    - Students are assigned up to max_per_kid programs.
+    - Preference rounds are processed in order.
+    - Random lottery if more students request a program than available slots.
+    - Students cannot be assigned to overlapping time slots.
+    - Records which preference round a student was assigned for transparency.
+    """
+    assigned_programs = {kid: [] for kid in kids_prefs}  # {kid: [assigned_program dicts]}
+    
+    # Build available slots map
     program_slots = {}
     for _, row in programs_df.iterrows():
         key = (clean_name(row['programname']), clean_name(row['day']), int(row['timeslot']))
         program_slots[key] = int(row['capacity'])
 
+    # Determine the max number of preference columns
     max_rank = max(len(prefs) for prefs in kids_prefs.values())
 
+    # Loop until no more assignments can be made
     assignments_remaining = True
     while assignments_remaining:
-        assignments_remaining = False
+        assignments_remaining = False  # assume done unless we assign someone this round
+        
         for rank in range(max_rank):
             applicants_per_slot = {}
+            
+            # Step 1: Collect all applicants for this preference round
             for kid, prefs in kids_prefs.items():
                 if len(assigned_programs[kid]) >= max_per_kid:
-                    continue
+                    continue  # student already reached max programs
                 if rank >= len(prefs):
-                    continue
+                    continue  # student doesn't have a preference for this rank
+
                 pref_program = prefs[rank]
-
-                # Track occupied slots
+                
+                # Track occupied slots for this student
                 occupied_slots = {(a['Day'], a['TimeSlot']) for a in assigned_programs[kid]}
-
-                # Available slots
-                available_slots = [k for k in program_slots
-                                   if k[0] == pref_program and program_slots[k] > 0
-                                   and (k[1], k[2]) not in occupied_slots]
+                
+                # Determine available slots for this program
+                available_slots = [
+                    k for k in program_slots
+                    if k[0] == pref_program and program_slots[k] > 0 and (k[1], k[2]) not in occupied_slots
+                ]
+                
                 if available_slots:
                     assignments_remaining = True
+                    # Randomly pick one available slot for this student
                     chosen_slot = random.choice(available_slots)
                     applicants_per_slot.setdefault(chosen_slot, []).append(kid)
 
-            # Assign randomly if over capacity
+            # Step 2: Assign students per slot
             for slot_key, applicants in applicants_per_slot.items():
-                available = program_slots[slot_key]
-                unassigned = [kid for kid in applicants if len(assigned_programs[kid]) < max_per_kid]
-                if len(unassigned) <= available:
-                    for kid in unassigned:
+                remaining = program_slots[slot_key]
+                eligible = [kid for kid in applicants if len(assigned_programs[kid]) < max_per_kid]
+                
+                if len(eligible) <= remaining:
+                    for kid in eligible:
                         assigned_programs[kid].append({
                             'Program': slot_key[0],
                             'Day': slot_key[1],
-                            'TimeSlot': slot_key[2]
+                            'TimeSlot': slot_key[2],
+                            'PreferenceRound': rank + 1  # store preference round assigned
                         })
                         program_slots[slot_key] -= 1
                 else:
-                    selected = random.sample(unassigned, available)
+                    selected = random.sample(eligible, remaining)
                     for kid in selected:
                         assigned_programs[kid].append({
                             'Program': slot_key[0],
                             'Day': slot_key[1],
-                            'TimeSlot': slot_key[2]
+                            'TimeSlot': slot_key[2],
+                            'PreferenceRound': rank + 1
                         })
                         program_slots[slot_key] -= 1
-    return assigned_programs
 
+    return assigned_programs
+    
 # ---------------- Generate Button ----------------
 if st.button("Generate Assignments / 生成分配"):
     if df_programs is None or df_kids is None:
