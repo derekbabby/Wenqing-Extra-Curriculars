@@ -6,7 +6,7 @@ import unicodedata
 
 # ---------------- Logo (centered) ----------------
 logo = Image.open("logo.png")  # Place logo.png in the same folder as app.py
-st.image(logo, width=250)
+st.image(logo, width=250)  # centers naturally
 
 # ---------------- Language Toggle ----------------
 language = st.sidebar.radio("Language / 語言", ("English", "繁體中文"))
@@ -20,11 +20,11 @@ if language == "English":
     upload_kids = "Upload Kids Preferences CSV"
     upload_kids_info = "CSV format: KidName, Preference1, Preference2, Preference3..."
     max_programs_text = "Max Programs per Kid"
-    random_seed_text = "Random Seed (optional)"
     assignments_text = "Assignments"
     download_text = "Download Assignments CSV"
     download_button_label = "Download CSV"
     preview_text = "Preview of Uploaded File"
+    random_seed_text = "Random Seed (for reproducible lottery)"
 else:
     title = "學生社團分配抽籤系統"
     subtitle = "根據偏好、名額與時段分配學生到社團活動"
@@ -33,11 +33,11 @@ else:
     upload_kids = "上傳學生偏好 CSV"
     upload_kids_info = "CSV 格式: KidName, Preference1, Preference2, Preference3..."
     max_programs_text = "每位學生最多可分配社團數"
-    random_seed_text = "隨機種子（可選）"
     assignments_text = "分配結果"
     download_text = "下載分配結果 CSV"
     download_button_label = "下載 CSV"
     preview_text = "上傳檔案預覽"
+    random_seed_text = "隨機種子 (用於可重現抽籤)"
 
 # ---------------- Page Title ----------------
 st.markdown(f"<h1 style='text-align: center; color: #2E86C1;'>{title}</h1>", unsafe_allow_html=True)
@@ -52,18 +52,15 @@ with st.expander("How the Student Club Assignment Lottery Works / 學生社團�
 The lottery assigns students to clubs based on their submitted preferences, club capacities, and time slots.
 
 ### How the Draw Works
-- Assignments are processed in **preference rounds**.  
-  - First, all students’ first choices are considered.  
-  - If a student cannot get their first choice (due to capacity or time conflicts), they are considered in the next round for their second choice.  
-  - This continues until the student is assigned up to the maximum number of programs.
-- Random selection is applied **only if a program is oversubscribed** (more applicants than slots).
-- Students cannot be assigned to **overlapping time slots**.
-- The system records the **preference round** in which a student was assigned.
-- Optional **Random Seed** ensures reproducibility.
+- Assignments proceed **preference by preference** (first choice, second choice, etc.).
+- Each student can list multiple preferences.
+- Students compete for program slots, but **students with fewer programs assigned so far get priority**.
+- If multiple students with the same number of assigned programs compete for limited slots, a **random lottery** decides who gets in.
+- Students cannot be assigned to overlapping time slots.
+- A student can be assigned up to the maximum number of programs set in the sidebar.
 
-### Random Seed
-- You can set a **Random Seed** in the sidebar to reproduce the same assignment results.  
-- Using the same seed will produce the same results; changing the seed will generate new random assignments.
+**Random Seed:**  
+You can set a random seed in the sidebar to make the lottery results reproducible for testing or demonstration purposes.
         """)
     else:
         st.markdown("""
@@ -71,83 +68,66 @@ The lottery assigns students to clubs based on their submitted preferences, club
 抽籤系統會依照學生填寫的偏好、社團名額與時段，將學生分配到社團。
 
 ### 抽籤方式
-- 分配依 **偏好回合** 進行：  
-  - 先處理所有學生的第一偏好。  
-  - 若學生因名額不足或時段衝突無法取得第一偏好，則在下一回合考慮第二偏好。  
-  - 依此方式繼續，直到學生分配到最大可參加社團數。
-- 只有在 **申請人數超過名額** 時，才會以隨機方式抽籤。
-- 學生不會被分配到 **同一時段重疊的社團**。
-- 系統會紀錄學生分配所來自的 **偏好回合**。
-- 可選 **隨機種子** 以產生可重現結果。
+- 分配依 **偏好順序**（第一選、第二選……）進行。
+- 每位學生可填寫多個社團偏好。
+- 當多位學生爭取同一社團時，**已分配社團數量較少的學生優先**。
+- 若多位學生分配數相同且名額不足，將以 **隨機抽籤** 決定。
+- 學生不會被分配到同一時段重疊的社團。
+- 每位學生最多可被分配到的社團數量，由側邊欄設定。
 
-### 隨機種子
-- 可在側邊欄設定 **隨機種子**，使用相同種子會產生相同結果；更換種子會產生新的分配。
+**隨機種子:**  
+可在側邊欄設定隨機種子，確保抽籤結果可重現，方便測試或演示。
         """)
 
 # ---------------- Usage Instructions Collapsible ----------------
 with st.expander("How to Use the System / 系統使用說明", expanded=False):
     if language == "English":
-        st.markdown(f"""
+        st.markdown("""
 ### Step 1: Prepare Programs CSV
-- CSV must include the following columns: `ProgramName`, `Capacity`, `Day`, `Timeslot`.
-- `ProgramName`: Name of the club/program (case-insensitive).
-- `Capacity`: Maximum number of students allowed in the program.
-- `Day`: Weekday (Monday, Tuesday, etc.).
-- `Timeslot`: Slot number (1, 2, 3), corresponding to the time slot table shown above.
-- Make sure there are no extra spaces in the program names.
+- CSV must include: `ProgramName`, `Capacity`, `Day`, `Timeslot`.
 
 ### Step 2: Prepare Kids Preferences CSV
 - First column: `KidName`.
-- Remaining columns: `Preference1`, `Preference2`, etc. (number of preferences can vary per student).
-- Preferences must match the program names in the Programs CSV (case-insensitive, whitespace ignored).
+- Remaining columns: `Preference1`, `Preference2`, etc.
 
 ### Step 3: Upload Files
 - Upload Programs CSV first, then Kids Preferences CSV.
-- You will see a preview of each uploaded file.
 
-### Step 4: Set Max Programs and Random Seed
-- In the sidebar, set “Max Programs per Kid” (default 1).  
-- Optional: set a **Random Seed** number to reproduce results.
+### Step 4: Set Max Programs & Random Seed
+- Set maximum programs per student.
+- Optionally, set a random seed for reproducibility.
 
 ### Step 5: Generate Assignments
-- Click “Generate Assignments” button.
-- Assignments will appear in a scrollable table, with the **Random Seed used** shown at the top.
-- You can download the results as a CSV.
+- Click the button to assign students.
+- Results appear on screen and can be downloaded.
         """)
     else:
-        st.markdown(f"""
+        st.markdown("""
 ### 步驟 1：準備社團活動 CSV
 - CSV 必須包含欄位：`ProgramName`、`Capacity`、`Day`、`Timeslot`。
-- `ProgramName`：社團名稱（不分大小寫）。
-- `Capacity`：該社團最多可容納學生數。
-- `Day`：星期幾（Monday, Tuesday 等）。
-- `Timeslot`：時段編號（1, 2, 3），對應上方時段表。
-- 確保社團名稱不要多餘空格。
 
 ### 步驟 2：準備學生偏好 CSV
 - 第一欄：`KidName`。
-- 後續欄位：`Preference1`, `Preference2` 等（每位學生可填多個）。
-- 偏好必須與 Programs CSV 的社團名稱一致（不分大小寫，忽略空格）。
+- 後續欄位：`Preference1`, `Preference2` 等。
 
 ### 步驟 3：上傳檔案
 - 先上傳 Programs CSV，再上傳 Kids Preferences CSV。
-- 上傳後可看到檔案預覽。
 
-### 步驟 4：設定每位學生最多分配社團數與隨機種子
-- 在側邊欄設定 “每位學生最多可分配社團數”（預設 1）。  
-- 可選：設定 **隨機種子**，使用相同種子可產生相同分配結果。
+### 步驟 4：設定每位學生最多分配社團數 & 隨機種子
+- 設定最大分配社團數。
+- 可選擇設定隨機種子以保證抽籤結果可重現。
 
 ### 步驟 5：生成分配結果
-- 點擊 “生成分配” 按鈕。
-- 分配結果將顯示在可捲動表格中，並顯示使用的 **隨機種子**。
-- 可下載 CSV 保存或分享分配結果。
+- 點擊按鈕生成分配。
+- 結果將顯示並可下載。
         """)
 
 # ---------------- Sidebar Settings ----------------
 st.sidebar.subheader(max_programs_text)
 max_programs_per_kid = st.sidebar.number_input(max_programs_text, min_value=1, value=1)
+
 st.sidebar.subheader(random_seed_text)
-random_seed = st.sidebar.number_input(random_seed_text, min_value=0, value=0, step=1)
+random_seed = st.sidebar.number_input(random_seed_text, min_value=0, value=42, step=1)
 
 # ---------------- Time Slot Table ----------------
 time_slot_mapping = {1: "12:50-2:20", 2: "2:20-3:50", 3: "Undefined"}
@@ -191,15 +171,23 @@ def clean_name(name):
 
 # ---------------- Assignment Function ----------------
 def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1, seed=None):
-    """Assign students to programs based on preferences, capacities, and time slots."""
+    """
+    Assign students based on preference rounds, capacities, time slots.
+    Priority: students with fewer assigned programs go first.
+    """
     if seed is not None:
         random.seed(seed)
-    assigned_programs = {kid: [] for kid in kids_prefs}  
+
+    assigned_programs = {kid: [] for kid in kids_prefs}
+    
+    # Build program slots
     program_slots = {}
     for _, row in programs_df.iterrows():
         key = (clean_name(row['programname']), clean_name(row['day']), int(row['timeslot']))
         program_slots[key] = int(row['capacity'])
+
     max_rank = max(len(prefs) for prefs in kids_prefs.values())
+    
     assignments_remaining = True
     while assignments_remaining:
         assignments_remaining = False
@@ -208,6 +196,7 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1, seed=None
             for kid, prefs in kids_prefs.items():
                 if len(assigned_programs[kid]) >= max_per_kid or rank >= len(prefs):
                     continue
+
                 pref_program = prefs[rank]
                 occupied_slots = {(a['Day'], a['TimeSlot']) for a in assigned_programs[kid]}
                 available_slots = [
@@ -218,28 +207,38 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1, seed=None
                     assignments_remaining = True
                     chosen_slot = random.choice(available_slots)
                     applicants_per_slot.setdefault(chosen_slot, []).append(kid)
+
+            # Assign per slot with priority
             for slot_key, applicants in applicants_per_slot.items():
                 remaining = program_slots[slot_key]
-                eligible = [kid for kid in applicants if len(assigned_programs[kid]) < max_per_kid]
-                if len(eligible) <= remaining:
-                    for kid in eligible:
-                        assigned_programs[kid].append({
-                            'Program': slot_key[0],
-                            'Day': slot_key[1],
-                            'TimeSlot': slot_key[2],
-                            'PreferenceRound': rank + 1
-                        })
-                        program_slots[slot_key] -= 1
-                else:
-                    selected = random.sample(eligible, remaining)
-                    for kid in selected:
-                        assigned_programs[kid].append({
-                            'Program': slot_key[0],
-                            'Day': slot_key[1],
-                            'TimeSlot': slot_key[2],
-                            'PreferenceRound': rank + 1
-                        })
-                        program_slots[slot_key] -= 1
+                # Sort by fewest programs assigned
+                applicants_sorted = sorted(applicants, key=lambda k: len(assigned_programs[k]))
+                while remaining > 0 and applicants_sorted:
+                    min_assigned = len(assigned_programs[applicants_sorted[0]])
+                    # Group with same assigned count
+                    group = [k for k in applicants_sorted if len(assigned_programs[k]) == min_assigned]
+                    if len(group) <= remaining:
+                        for k in group:
+                            assigned_programs[k].append({
+                                'Program': slot_key[0],
+                                'Day': slot_key[1],
+                                'TimeSlot': slot_key[2],
+                                'PreferenceRound': rank + 1
+                            })
+                            remaining -= 1
+                            applicants_sorted.remove(k)
+                    else:
+                        selected = random.sample(group, remaining)
+                        for k in selected:
+                            assigned_programs[k].append({
+                                'Program': slot_key[0],
+                                'Day': slot_key[1],
+                                'TimeSlot': slot_key[2],
+                                'PreferenceRound': rank + 1
+                            })
+                            applicants_sorted.remove(k)
+                        remaining = 0
+                program_slots[slot_key] = remaining
     return assigned_programs
 
 # ---------------- Generate Button ----------------
@@ -257,12 +256,14 @@ if st.button("Generate Assignments / 生成分配"):
                 kid_name = clean_name(row[0])
                 prefs = [clean_name(p) for p in row[1:] if pd.notna(p) and str(p).strip()]
                 kids_preferences[kid_name] = prefs
+
             valid_program_names = {clean_name(p): p for p in df_programs['programname']}
             for kid in kids_preferences:
                 kids_preferences[kid] = [valid_program_names[p] for p in kids_preferences[kid] if p in valid_program_names]
+
             assignments = assign_programs_with_times(kids_preferences, df_programs, max_programs_per_kid, seed=random_seed)
-            
-            st.subheader(f"Assignments (Random Seed Used: {random_seed}) / 分配結果（使用隨機種子: {random_seed}）")
+
+            # Build display
             table_rows = []
             for kid, progs in assignments.items():
                 prefs = kids_preferences[kid]
@@ -281,9 +282,10 @@ if st.button("Generate Assignments / 生成分配"):
                         'Details': f"Day: {day}, Slot: {slot}, PreferenceRank: {rank}, Round: {p['PreferenceRound']}"
             })
             display_df = pd.DataFrame(table_rows).sort_values(by='Kid')
+            st.subheader(assignments_text)
             st.dataframe(display_df[['Kid','Program','Details']], use_container_width=True)
 
-            # ---------------- Summary ----------------
+            # Summary Statistics
             st.subheader("Summary Statistics / 統計摘要")
             df_programs['programname_clean'] = df_programs['programname'].apply(clean_name)
             program_fill = display_df.groupby('Program').size().reset_index(name='AssignedCount')
@@ -304,7 +306,7 @@ if st.button("Generate Assignments / 生成分配"):
             summary_df = pd.concat([program_fill[['Program','AssignedCount','Capacity','FillRate']], totals], ignore_index=True)
             st.dataframe(summary_df, use_container_width=True)
 
-            # ---------------- Download CSV ----------------
+            # Download CSV
             st.subheader(download_text)
             csv_download_df = display_df.drop(columns=['Details'])
             st.download_button(
