@@ -6,7 +6,7 @@ import unicodedata
 
 # ---------------- Logo (centered) ----------------
 logo = Image.open("logo.png")  # Place logo.png in the same folder as app.py
-st.image(logo, width=250)
+st.image(logo, width=250)  # centers naturally
 
 # ---------------- Language Toggle ----------------
 language = st.sidebar.radio("Language / 語言", ("English", "繁體中文"))
@@ -139,8 +139,7 @@ time_slots_df = pd.DataFrame([
     ["Thursday", time_slot_mapping[1], time_slot_mapping[2], time_slot_mapping[3]],
     ["Friday", time_slot_mapping[1], time_slot_mapping[2], time_slot_mapping[3]],
 ], columns=["Day","Slot 1","Slot 2","Slot 3"])
-time_slots_df.insert(0, 'No', range(1, len(time_slots_df)+1))
-st.dataframe(time_slots_df, use_container_width=True)
+st.dataframe(time_slots_df.reset_index(drop=True).assign(No=lambda x: x.index+1))
 
 # ---------------- File Uploads ----------------
 st.subheader(upload_programs)
@@ -157,9 +156,7 @@ def preview_file(file):
         df = pd.read_csv(file)
         df.columns = df.columns.str.strip().str.lower()
         st.write(preview_text)
-        df_display = df.copy()
-        df_display.insert(0, 'No', range(1, len(df_display)+1))
-        st.dataframe(df_display, use_container_width=True)
+        st.dataframe(df.reset_index(drop=True).assign(No=lambda x: x.index+1), use_container_width=True)
         return df
     except Exception as e:
         st.error(f"Error reading CSV: {e}")
@@ -168,7 +165,7 @@ def preview_file(file):
 df_programs = preview_file(program_file) if program_file else None
 df_kids = preview_file(kids_file) if kids_file else None
 
-# ---------------- Helper ----------------
+# ---------------- Helper to normalize names ----------------
 def clean_name(name):
     return unicodedata.normalize("NFKC", str(name).strip())
 
@@ -203,6 +200,7 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1, seed=None
                     chosen_slot = random.choice(available_slots)
                     applicants_per_slot.setdefault(chosen_slot, []).append(kid)
 
+            # Assign per slot with priority
             for slot_key, applicants in applicants_per_slot.items():
                 remaining = program_slots[slot_key]
                 applicants_sorted = sorted(applicants, key=lambda k: len(assigned_programs[k]))
@@ -255,7 +253,7 @@ if st.button("Generate Assignments / 生成分配"):
 
             assignments = assign_programs_with_times(kids_preferences, df_programs, max_programs_per_kid, seed=random_seed)
 
-            # Build display table with 1-based "No"
+            # Build display
             table_rows = []
             for kid, progs in assignments.items():
                 prefs = kids_preferences[kid]
@@ -274,12 +272,10 @@ if st.button("Generate Assignments / 生成分配"):
                         'Details': f"Day: {day}, Slot: {slot}, PreferenceRank: {rank}, Round: {p['PreferenceRound']}"
             })
             display_df = pd.DataFrame(table_rows).sort_values(by='Kid')
-            display_df_with_no = display_df[['Kid','Program','Details']].copy()
-            display_df_with_no.insert(0, 'No', range(1, len(display_df_with_no)+1))
             st.subheader(assignments_text)
-            st.dataframe(display_df_with_no, use_container_width=True)
+            st.dataframe(display_df[['Kid','Program','Details']].reset_index(drop=True).assign(No=lambda x: x.index+1), use_container_width=True)
 
-            # Summary Statistics with 1-based "No"
+            # Summary Statistics
             st.subheader("Summary Statistics / 統計摘要")
             df_programs['programname_clean'] = df_programs['programname'].apply(clean_name)
             program_fill = display_df.groupby('Program').size().reset_index(name='AssignedCount')
@@ -298,9 +294,7 @@ if st.button("Generate Assignments / 生成分配"):
                              if program_fill['Capacity'].sum() > 0 else 0)
             }])
             summary_df = pd.concat([program_fill[['Program','AssignedCount','Capacity','FillRate']], totals], ignore_index=True)
-            summary_df_with_no = summary_df.copy()
-            summary_df_with_no.insert(0, 'No', range(1, len(summary_df_with_no)+1))
-            st.dataframe(summary_df_with_no, use_container_width=True)
+            st.dataframe(summary_df.reset_index(drop=True).assign(No=lambda x: x.index+1), use_container_width=True)
 
             # Download CSV
             st.subheader(download_text)
