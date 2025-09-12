@@ -283,7 +283,7 @@ if st.button("Generate Assignments / 生成分配"):
             })
             display_df = pd.DataFrame(table_rows).sort_values(by='Kid')
             st.subheader(assignments_text)
-            st.dataframe(display_df[['Kid','Program','Details']], use_container_width=True)
+            st.dataframe(display_df[['Kid','Program','Details']], use_container_width=True, index=False)
 
             # Summary Statistics
             st.subheader("Summary Statistics / 統計摘要")
