@@ -139,7 +139,7 @@ time_slots_df = pd.DataFrame([
     ["Thursday", time_slot_mapping[1], time_slot_mapping[2], time_slot_mapping[3]],
     ["Friday", time_slot_mapping[1], time_slot_mapping[2], time_slot_mapping[3]],
 ], columns=["Day","Slot 1","Slot 2","Slot 3"])
-st.table(time_slots_df)
+st.dataframe(time_slots_df.reset_index(drop=True).assign(No=lambda x: x.index+1))
 
 # ---------------- File Uploads ----------------
 st.subheader(upload_programs)
@@ -156,7 +156,7 @@ def preview_file(file):
         df = pd.read_csv(file)
         df.columns = df.columns.str.strip().str.lower()
         st.write(preview_text)
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df.reset_index(drop=True).assign(No=lambda x: x.index+1), use_container_width=True)
         return df
     except Exception as e:
         st.error(f"Error reading CSV: {e}")
@@ -171,23 +171,16 @@ def clean_name(name):
 
 # ---------------- Assignment Function ----------------
 def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1, seed=None):
-    """
-    Assign students based on preference rounds, capacities, time slots.
-    Priority: students with fewer assigned programs go first.
-    """
     if seed is not None:
         random.seed(seed)
 
     assigned_programs = {kid: [] for kid in kids_prefs}
-    
-    # Build program slots
     program_slots = {}
     for _, row in programs_df.iterrows():
         key = (clean_name(row['programname']), clean_name(row['day']), int(row['timeslot']))
         program_slots[key] = int(row['capacity'])
 
     max_rank = max(len(prefs) for prefs in kids_prefs.values())
-    
     assignments_remaining = True
     while assignments_remaining:
         assignments_remaining = False
@@ -196,7 +189,6 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1, seed=None
             for kid, prefs in kids_prefs.items():
                 if len(assigned_programs[kid]) >= max_per_kid or rank >= len(prefs):
                     continue
-
                 pref_program = prefs[rank]
                 occupied_slots = {(a['Day'], a['TimeSlot']) for a in assigned_programs[kid]}
                 available_slots = [
@@ -211,11 +203,9 @@ def assign_programs_with_times(kids_prefs, programs_df, max_per_kid=1, seed=None
             # Assign per slot with priority
             for slot_key, applicants in applicants_per_slot.items():
                 remaining = program_slots[slot_key]
-                # Sort by fewest programs assigned
                 applicants_sorted = sorted(applicants, key=lambda k: len(assigned_programs[k]))
                 while remaining > 0 and applicants_sorted:
                     min_assigned = len(assigned_programs[applicants_sorted[0]])
-                    # Group with same assigned count
                     group = [k for k in applicants_sorted if len(assigned_programs[k]) == min_assigned]
                     if len(group) <= remaining:
                         for k in group:
@@ -283,7 +273,7 @@ if st.button("Generate Assignments / 生成分配"):
             })
             display_df = pd.DataFrame(table_rows).sort_values(by='Kid')
             st.subheader(assignments_text)
-            st.dataframe(display_df[['Kid','Program','Details']].reset_index(drop=True), use_container_width=True)
+            st.dataframe(display_df[['Kid','Program','Details']].reset_index(drop=True).assign(No=lambda x: x.index+1), use_container_width=True)
 
             # Summary Statistics
             st.subheader("Summary Statistics / 統計摘要")
@@ -304,7 +294,7 @@ if st.button("Generate Assignments / 生成分配"):
                              if program_fill['Capacity'].sum() > 0 else 0)
             }])
             summary_df = pd.concat([program_fill[['Program','AssignedCount','Capacity','FillRate']], totals], ignore_index=True)
-            st.dataframe(summary_df, use_container_width=True)
+            st.dataframe(summary_df.reset_index(drop=True).assign(No=lambda x: x.index+1), use_container_width=True)
 
             # Download CSV
             st.subheader(download_text)
