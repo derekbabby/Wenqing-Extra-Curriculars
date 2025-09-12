@@ -276,6 +276,7 @@ if st.button("Generate Assignments / 生成分配"):
     if df_programs is None or df_kids is None:
         st.error("Please upload both Programs and Kids CSV files before generating assignments.")
     else:
+        # Check required columns
         required_cols = ['programname','capacity','day','timeslot']
         missing_cols = [c for c in required_cols if c not in df_programs.columns]
         if missing_cols:
@@ -288,20 +289,20 @@ if st.button("Generate Assignments / 生成分配"):
                 prefs = [clean_name(p) for p in row[1:] if pd.notna(p) and str(p).strip()]
                 kids_preferences[kid_name] = prefs
 
-            # Step 2: Build valid program names mapping
+            # ---------------- Step 2: Build valid program names mapping ----------------
             valid_program_names = {clean_name(p): p for p in df_programs['programname']}
 
-            # Step 3: Filter preferences to only valid programs
+            # ---------------- Step 3: Filter preferences to valid programs ----------------
             for kid in kids_preferences:
                 kids_preferences[kid] = [valid_program_names[p] for p in kids_preferences[kid] if p in valid_program_names]
 
-            # Step 4: Assign students
+            # ---------------- Step 4: Assign students ----------------
             assignments = assign_programs_with_times(kids_preferences, df_programs, max_programs_per_kid)
 
-            # Step 5: Build display DataFrame
+            # ---------------- Step 5: Build display DataFrame ----------------
             table_rows = []
             for kid, progs in assignments.items():
-                prefs = kids_preferences[kid]
+                prefs = kids_preferences.get(kid, [])
                 for p in progs:
                     prog_name = p['Program']
                     day = p['Day']
@@ -313,10 +314,13 @@ if st.button("Generate Assignments / 生成分配"):
                         'Day': day,
                         'TimeSlot': slot,
                         'PreferenceRank': rank,
-                        'Details': f"Day: {day}, Slot: {slot}, Preference: {rank}"
+                        'PreferenceRound': p['PreferenceRound'],
+                        'Details': f"Day: {day}, Slot: {slot}, PreferenceRank: {rank}, Round: {p['PreferenceRound']}"
                     })
 
             display_df = pd.DataFrame(table_rows).sort_values(by='Kid')
+
+            # ---------------- Display Assignments ----------------
             st.subheader(assignments_text)
             st.dataframe(display_df[['Kid','Program','Details']], use_container_width=True)
 
